@@ -29,11 +29,10 @@ never posts a message.
 
 | Tool | Description |
 |------|-------------|
-| `check_login` | Report whether the browser session is logged into Slack. |
-| `login` | Open a visible window and wait for you to sign in; saves the session. |
 | `list_channels` | List channels/DMs visible in your sidebar. |
 | `read_messages` | Read recent messages in a channel/DM (`channel`, `limit`). |
 | `read_thread` | Read a thread by matching text in its parent message. |
+| `search_messages` | Search messages workspace-wide with Slack search syntax. |
 
 ## Requirements
 
@@ -62,7 +61,7 @@ claude mcp add web-slack -- \
 Then reload Claude Code; the tools appear as `mcp__web-slack__*`. The first time
 you call a read tool while signed out, the server opens a visible Chromium and
 waits for you to sign in — no separate step. The session is saved and reused on
-later runs. (A `login` tool exists if you'd rather sign in up front.)
+later runs.
 
 ### Other MCP clients
 

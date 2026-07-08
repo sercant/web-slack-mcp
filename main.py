@@ -242,37 +242,6 @@ async def _render(page: Page, messages: list[dict]) -> str:
 
 
 @mcp.tool()
-async def check_login() -> str:
-    """Report whether the persistent browser session is logged into Slack.
-
-    Navigates to the Slack web client and checks for the app shell. Does not
-    modify anything. Run `login` first if this reports logged out.
-    """
-    page = await _get_page()
-    await page.goto(SLACK_URL, wait_until="domcontentloaded")
-    if await _is_logged_in(page):
-        return f"Logged in. Current URL: {page.url}"
-    return f"Not logged in (no Slack app shell at {page.url}). Run the `login` tool."
-
-
-@mcp.tool()
-async def login(wait_seconds: int = LOGIN_WAIT_SECONDS) -> str:
-    """Open Slack in a visible window so you can log in manually.
-
-    Optional — the read tools open this window on their own when you're signed
-    out. Polls up to `wait_seconds` for the app shell after you finish SSO /
-    magic-link sign-in; the session is saved to the persistent profile.
-    """
-    if HEADLESS:
-        return "SLACK_HEADLESS=1 is set; login needs a visible window. Restart with SLACK_HEADLESS=0."
-    page = await _get_page()
-    await page.goto(SLACK_URL, wait_until="domcontentloaded")
-    if await _await_login(page, wait_seconds):
-        return f"Login detected and saved. Current URL: {page.url}"
-    return f"Timed out after {wait_seconds}s waiting for login. Current URL: {page.url}"
-
-
-@mcp.tool()
 async def list_channels() -> str:
     """List the channels and DMs visible in your Slack sidebar.
 
@@ -336,6 +305,32 @@ async def read_thread(channel: str, message_text: str, limit: int = 50) -> str:
         page, "conversations.replies", channel=channel_id, ts=parent["ts"], limit=str(limit)
     )
     return await _render(page, thread.get("messages", []))
+
+
+@mcp.tool()
+async def search_messages(query: str, limit: int = 20) -> str:
+    """Search Slack messages across your workspace.
+
+    `query` accepts Slack search syntax (e.g. `in:#general from:@me deploy`).
+    Returns up to `limit` matches, newest-first, as `[time] #channel Name: text`.
+    Read-only.
+    """
+    page = await _get_page()
+    await _require_login(page)
+    data = await _api(
+        page, "search.messages", query=query, count=str(limit), sort="timestamp", sort_dir="desc"
+    )
+    matches = data.get("messages", {}).get("matches", [])
+    if not matches:
+        return f"(no messages found for {query!r})"
+    ids = {m["user"] for m in matches if m.get("user")}
+    names = await _resolve_users(page, ids)
+    lines = []
+    for m in matches:
+        who = names.get(m.get("user")) or m.get("username") or "system"
+        where = (m.get("channel") or {}).get("name") or "?"
+        lines.append(f"[{_ts(m.get('ts'))}] #{where} {who}: {_decode(m.get('text') or '', names)}")
+    return "\n".join(lines)
 
 
 def main():

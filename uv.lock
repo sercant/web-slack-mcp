@@ -683,8 +683,8 @@ wheels = [
 
 [[package]]
 name = "web-slack-mcp"
-version = "0.1.0"
-source = { virtual = "." }
+version = "0.2.0"
+source = { editable = "." }
 dependencies = [
     { name = "mcp" },
     { name = "playwright" },
