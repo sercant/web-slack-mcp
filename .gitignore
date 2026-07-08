@@ -1,6 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,macos
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,macos
 
+### web-slack-mcp ###
+# Persistent browser profile holding your logged-in Slack session
+.slack-profile/
+
 ### macOS ###
 # General
 .DS_Store
