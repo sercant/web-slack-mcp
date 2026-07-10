@@ -37,6 +37,9 @@ LOGGED_IN_SELECTORS = [
 SIDEBAR_CHANNEL = '[data-qa^="channel_sidebar_name_"]'  # sidebar channel labels
 MESSAGE_ITEM = '[data-qa="message_container"]'          # a rendered message
 QUICK_SWITCH = "Meta+k" if sys.platform == "darwin" else "Control+k"
+# The quick switcher's input is a Quill editor that shares data-qa="texty_input"
+# with the message composer, so navigation must scope typing to this element.
+SWITCHER_INPUT = '[data-qa="floating_omniswitcher_input"] [data-qa="texty_input"]'
 
 # Pull the workspace API token + host from Slack's boot data (the token plus the
 # session cookie is all the internal API needs). Prefer the team matching the
@@ -137,12 +140,16 @@ async def _require_login(page: Page) -> None:
 async def _open_channel(page: Page, channel: str) -> str:
     """Jump to a channel/DM by name via the quick switcher; return its id.
 
-    The switcher autofocuses its input, so we type blind, let results filter,
-    then Enter the top hit and read the resulting /client/T…/<channel id> URL.
+    Opening the switcher doesn't reliably move focus off the message composer,
+    and both share data-qa="texty_input", so typing blind can leak the channel
+    name into the composer. We click the switcher input to force focus onto it
+    (raising if it never opened), type there, then Enter the top hit and read the
+    resulting /client/T…/<channel id> URL.
     """
     await page.keyboard.press(QUICK_SWITCH)
-    await page.wait_for_timeout(500)
-    await page.keyboard.type(channel, delay=20)
+    switcher = page.locator(SWITCHER_INPUT)
+    await switcher.click(timeout=5000)
+    await switcher.press_sequentially(channel, delay=20)
     await page.wait_for_timeout(900)  # let the result list filter to the top hit
     await page.keyboard.press("Enter")
     await page.wait_for_selector(MESSAGE_ITEM, timeout=8000)
